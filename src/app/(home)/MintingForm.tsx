@@ -21,48 +21,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const ACCEPTED_IMAGE_TYPES = [
-	"image/jpeg",
-	"image/jpg",
-	"image/png",
-	"image/webp",
-];
-
 const formSchema = z.object({
-	name: z
-		.string()
-		.min(3, "Name is required")
-		.max(32, "Name must be less than 32 characters"),
-	symbol: z
-		.string()
-		.min(3, "Symbol is required")
-		.max(10, "Symbol must be less than 10 characters"),
-	initialSupply: z
+	token: z.string(),
+	receiver: z.string(),
+	supply: z
 		.string()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val)),
-
-	totalSupply: z
-		.string()
-		.refine((val) => !isNaN(Number(val)), "Expected a number")
-		.transform((val) => Number(val)),
-
-	decimals: z
-		.string()
-		.refine((val) => !isNaN(Number(val)), "Expected a number")
-		.transform((val) => Number(val))
-		.refine(
-			(val) => val >= 0 && val <= 9,
-			"Decimals must be between 0 and 9"
-		),
-
-	description: z.string().min(1, "Description is required"),
-	image: z
-		.any()
-		.refine(
-			(file) => file instanceof FileList && file.length === 1,
-			"Image is required"
-		),
 });
 
 export default function TokenForm() {
@@ -76,12 +41,9 @@ export default function TokenForm() {
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-			name: "",
-			symbol: "",
-			initialSupply: 1000000,
-			totalSupply: 1000000,
-			decimals: 6,
-			description: "",
+            token: "",
+            receiver: "",
+            supply: 10,
 		},
 	});
 
@@ -92,13 +54,9 @@ export default function TokenForm() {
 			setSuccess(null);
 
 			const formData = new FormData();
-			formData.append("name", values.name);
-			formData.append("symbol", values.symbol);
-			formData.append("description", values.description);
-			formData.append("image", values.image[0]);
-			formData.append("initialSupply", values.initialSupply.toString());
-			formData.append("totalSupply", values.totalSupply.toString());
-			formData.append("decimals", values.decimals.toString());
+            formData.append("token", values.token);
+            formData.append("receiver", values.receiver);
+            formData.append("supply", values.supply.toString());
 
 			const publicKey = wallet.publicKey?.toBase58();
 
@@ -172,14 +130,14 @@ export default function TokenForm() {
 					{error && (
 						<Alert
 							variant="destructive"
-							className="overflow-x-scroll my-4"
+							className="overflow-x-scroll"
 						>
 							<AlertDescription>{error}</AlertDescription>
 						</Alert>
 					)}
 
 					{success && (
-						<Alert className="overflow-x-scroll my-4">
+						<Alert className="overflow-x-scroll">
 							<AlertDescription>{success}</AlertDescription>
 						</Alert>
 					)}
@@ -244,7 +202,7 @@ export default function TokenForm() {
 							name="totalSupply"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>{`Max Token (0 for unlimited)`}</FormLabel>
+									<FormLabel>Total Token Supply</FormLabel>
 									<FormControl>
 										<Input
 											type="number"

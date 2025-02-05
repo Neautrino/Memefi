@@ -1,52 +1,104 @@
-import { createMint, getOrCreateAssociatedTokenAccount, mintToChecked } from "@solana/spl-token";
+import {
+	createMintToCheckedInstruction,
+	getMint,
+	getTokenMetadata,
+    TOKEN_2022_PROGRAM_ID,
+} from "@solana/spl-token";
 import {
 	Connection,
 	clusterApiUrl,
-	Keypair,
-    PublicKey,
-    LAMPORTS_PER_SOL,
+	PublicKey,
+	Transaction,
 } from "@solana/web3.js";
 import { NextRequest } from "next/server";
-import bs58 from "bs58";
-
+import { getOrCreateAssociatedTokenAccountTx } from "./create-ata";
 
 const connection = new Connection(clusterApiUrl("devnet"));
 
-export async function POST(request: NextRequest) {
-	const body = await request.json();
+export async function mintToken(
+	mintPubKey: string,
+	payer: string,
+	owner: string,
+	amount: number
+) {
 
-	const payer = Keypair.fromSecretKey(bs58.decode(body.privateKey as string));
-    const mintPubkey = new PublicKey(
-        body.mintPubKey
-    );
+	const mintPublickey = new PublicKey(mintPubKey);
+
+	const mintInfo = await getMint(connection, mintPublickey, undefined, TOKEN_2022_PROGRAM_ID);
+	const totalMintAmount = BigInt(amount * 10 ** mintInfo.decimals);
+
+	const metadata = await getTokenMetadata(connection, mintPublickey);
+	const maxSupplyEntry = metadata?.additionalMetadata.find(
+		([key]) => key === "maxSupply"
+	);
+	const maxSupply = maxSupplyEntry ? Number(maxSupplyEntry[1]) : null;
+	const currentSupply = BigInt(mintInfo.supply);
+
+	
+	if (
+		maxSupply &&
+		currentSupply + totalMintAmount >
+			BigInt(maxSupply * 10 ** mintInfo.decimals)
+	) {
+		throw new Error("Exceeds max supply");
+	}
+
+	const payerPubkey = new PublicKey(payer);
+	const ownerPubkey = new PublicKey(owner);
+
+	const { serializedTx, associatedToken } =
+		await getOrCreateAssociatedTokenAccountTx(
+			connection,
+			payerPubkey,
+			mintPublickey,
+			ownerPubkey
+		);
+		
+	const tx = Transaction.from(Buffer.from(serializedTx, "base64"));
+
+	tx.add(
+		createMintToCheckedInstruction(
+            mintPublickey,
+			associatedToken,
+            payerPubkey,
+			totalMintAmount,
+			mintInfo.decimals,
+            [],
+            TOKEN_2022_PROGRAM_ID
+		)
+	);
+
+	const serializedTransaction = tx
+		.serialize({ requireAllSignatures: false })
+		.toString("base64");
+
+	return { serializedTransaction, associatedToken };
+}
+
+export async function POST(request: NextRequest) {
+	const body = await request.formData();
+
+	const walletPublicKey = body.get("publicKey") as string;
+	const amount = parseInt( body.get("amount") as string);
+	const mintPubkey = body.get("mintPubKey") as string;
 
 	try {
-        const tokenAccount = await getOrCreateAssociatedTokenAccount(
-            connection,
-            payer,
-            mintPubkey,
-            new PublicKey(body.publicKey),
-        );
+		const { serializedTransaction, associatedToken } = await mintToken(
+			mintPubkey,
+			walletPublicKey,
+			walletPublicKey,
+			amount
+		);
 
-        const tokenAccountAddress = tokenAccount.address;
-        const tokenAccountPubkey = new PublicKey(tokenAccountAddress);
-
-        const txhash = await mintToChecked(
-            connection, // connection
-            payer, // fee payer
-            mintPubkey, // mint
-            tokenAccountPubkey, // receiver (should be a token account)
-            payer, // mint authority
-            1e9, // amount. if your decimals is 8, you mint 10^8 for 1 token.
-            9, // decimals
-        );
-
-        const tokenAmount = (await connection.getTokenAccountBalance(new PublicKey(tokenAccountAddress))).value.amount;
-        
-
-		return new Response(JSON.stringify( {"tokenATA" :tokenAccountAddress, "amount": tokenAmount, "txhash": txhash} ), {
-			headers: { "Content-Type": "application/json" },
-		});
+		return new Response(
+			JSON.stringify({
+				tokenATA: associatedToken,
+				serializedTransaction,
+			}),
+			{
+				headers: { "Content-Type": "application/json" },
+			}
+		);
 	} catch (error: any) {
 		return new Response(JSON.stringify({ error: error.message }), {
 			headers: { "Content-Type": "application/json" },
