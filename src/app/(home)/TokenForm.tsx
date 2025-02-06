@@ -145,11 +145,12 @@ export default function TokenForm() {
 				lastValidBlockHeight,
 			});
 
-			console.log("Token address: ", tokenAddress);
-			console.log("Signature: ", signature);
-
 			setSuccess(
-				`Token created successfully! Address: ${tokenAddress} with Signature: ${signature}`
+				`
+				Token created successfully! 
+				Token Address: ${tokenAddress},
+				Transaction Signature: ${signature}
+				`
 			);
 
 			form.reset();

@@ -51,9 +51,12 @@ export async function mintToken(
 			connection,
 			payerPubkey,
 			mintPublickey,
-			ownerPubkey
+			ownerPubkey,
+			false,
+			undefined,
+			TOKEN_2022_PROGRAM_ID,
 		);
-		
+
 	const tx = Transaction.from(Buffer.from(serializedTx, "base64"));
 
 	tx.add(
@@ -68,25 +71,32 @@ export async function mintToken(
 		)
 	);
 
+		const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+		tx.recentBlockhash = blockhash;
+		tx.lastValidBlockHeight = lastValidBlockHeight;
+		tx.feePayer = payerPubkey;
+
+
 	const serializedTransaction = tx
 		.serialize({ requireAllSignatures: false })
 		.toString("base64");
 
-	return { serializedTransaction, associatedToken };
+	return { serializedTransaction, associatedToken, lastValidBlockHeight };
 }
 
 export async function POST(request: NextRequest) {
 	const body = await request.formData();
 
-	const walletPublicKey = body.get("publicKey") as string;
+	const senderPublicKey = body.get("sender") as string;
+	const receiverPublicKey = body.get("receiver") as string;
 	const amount = parseInt( body.get("amount") as string);
 	const mintPubkey = body.get("mintPubKey") as string;
 
 	try {
-		const { serializedTransaction, associatedToken } = await mintToken(
+		const { serializedTransaction, associatedToken, lastValidBlockHeight } = await mintToken(
 			mintPubkey,
-			walletPublicKey,
-			walletPublicKey,
+			senderPublicKey,
+			receiverPublicKey,
 			amount
 		);
 
@@ -94,6 +104,7 @@ export async function POST(request: NextRequest) {
 			JSON.stringify({
 				tokenATA: associatedToken,
 				serializedTransaction,
+				lastValidBlockHeight
 			}),
 			{
 				headers: { "Content-Type": "application/json" },

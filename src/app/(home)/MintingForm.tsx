@@ -19,18 +19,22 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-	token: z.string(),
-	receiver: z.string(),
+	token: z.string()
+	.min(32, "Address is required")
+	.required("Address is required"),
+	receiver: z.string()
+	.min(32, "Address is required")
+	.required("Address is required"),
 	supply: z
-		.string()
+		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
-		.transform((val) => Number(val)),
+		.transform((val) => Number(val))
+		.required();
 });
 
-export default function TokenForm() {
+export default function MintingForm() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
@@ -41,9 +45,9 @@ export default function TokenForm() {
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-            token: "",
-            receiver: "",
-            supply: 10,
+			token: "",
+			receiver: "",
+			supply: 10,
 		},
 	});
 
@@ -54,9 +58,9 @@ export default function TokenForm() {
 			setSuccess(null);
 
 			const formData = new FormData();
-            formData.append("token", values.token);
-            formData.append("receiver", values.receiver);
-            formData.append("supply", values.supply.toString());
+			formData.append("mintPubKey", values.token);
+			formData.append("receiver", values.receiver);
+			formData.append("amount", values.supply.toString());
 
 			const publicKey = wallet.publicKey?.toBase58();
 
@@ -64,25 +68,24 @@ export default function TokenForm() {
 				throw new Error("Wallet not connected");
 			}
 
-			formData.append("publicKey", publicKey);
+			formData.append("sender", publicKey);
 
-			const response = await axios.post("/api/create-token", formData, {
+			console.log("formData", formData);
+
+			const response = await axios.post("/api/mint-token", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
 				},
 			});
 
 			const data = response.data;
+			form.reset();
 
 			if (response.status !== 200) {
-				throw new Error(data.error || "Failed to create token");
+				throw new Error(data.error || "Failed to mint token");
 			}
 
-			const {
-				serializedTransaction,
-				tokenAddress,
-				lastValidBlockHeight,
-			} = data;
+			const { serializedTransaction, lastValidBlockHeight } = data;
 
 			const transaction = Transaction.from(
 				Buffer.from(serializedTransaction, "base64")
@@ -103,11 +106,11 @@ export default function TokenForm() {
 				lastValidBlockHeight,
 			});
 
-			console.log("Token address: ", tokenAddress);
-			console.log("Signature: ", signature);
-
 			setSuccess(
-				`Token created successfully! Address: ${tokenAddress} with Signature: ${signature}`
+				`
+                Token transferred successfully!
+                Transaction signature: ${signature}
+                `
 			);
 
 			form.reset();
@@ -130,119 +133,27 @@ export default function TokenForm() {
 					{error && (
 						<Alert
 							variant="destructive"
-							className="overflow-x-scroll"
+							className="overflow-x-scroll my-4"
 						>
 							<AlertDescription>{error}</AlertDescription>
 						</Alert>
 					)}
 
 					{success && (
-						<Alert className="overflow-x-scroll">
+						<Alert className="overflow-x-scroll my-4">
 							<AlertDescription>{success}</AlertDescription>
 						</Alert>
 					)}
 
-					<div className="grid grid-cols-2 gap-4">
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="My Token"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="symbol"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Symbol</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="TKN"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-
-					<div className="grid grid-cols-3 gap-4">
-						<FormField
-							control={form.control}
-							name="initialSupply"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Initial Token Supply</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											placeholder="1000000"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="totalSupply"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Total Token Supply</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											placeholder="1000000"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="decimals"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Decimals</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											placeholder="6"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-
 					<FormField
 						control={form.control}
-						name="description"
+						name="token"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Description</FormLabel>
+								<FormLabel>Enter Token Address</FormLabel>
 								<FormControl>
-									<Textarea
-										placeholder="Token description"
+									<Input
+										placeholder={`${wallet.publicKey?.toBase58().toString()}`}
 										{...field}
 									/>
 								</FormControl>
@@ -253,17 +164,33 @@ export default function TokenForm() {
 
 					<FormField
 						control={form.control}
-						name="image"
-						render={({ field: { onChange, value, ...field } }) => (
+						name="receiver"
+						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Token Image</FormLabel>
+								<FormLabel>
+									Enter Receiver's Wallet Address
+								</FormLabel>
 								<FormControl>
 									<Input
-										type="file"
-										accept={ACCEPTED_IMAGE_TYPES.join(",")}
-										onChange={(e) =>
-											onChange(e.target.files)
-										}
+										placeholder="Ht544a2e7i6EWmVbA7Njo1eii7Z6382nSrqeUwDEz21"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="supply"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Minting Amount</FormLabel>
+								<FormControl>
+									<Input
+										type="number"
+										placeholder="1000"
 										{...field}
 									/>
 								</FormControl>
