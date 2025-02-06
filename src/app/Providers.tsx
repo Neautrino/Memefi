@@ -16,7 +16,7 @@ function Providers({children}: {children: React.ReactNode}) {
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   const wallets = useMemo(() => [
     new UnsafeBurnerWalletAdapter(),
-  ], [network]);
+  ], []);
 
   if (!mounted) return null;
 

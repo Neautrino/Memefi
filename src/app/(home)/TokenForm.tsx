@@ -38,17 +38,17 @@ const formSchema = z.object({
 		.min(3, "Symbol is required")
 		.max(10, "Symbol must be less than 10 characters"),
 	initialSupply: z
-		.string()
+		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val)),
 
 	totalSupply: z
-		.string()
+		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val)),
 
 	decimals: z
-		.string()
+		.number	()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val))
 		.refine(

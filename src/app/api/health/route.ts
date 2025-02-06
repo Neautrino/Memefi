@@ -1,6 +1,4 @@
-import { NextRequest } from "next/server";
-
-export async function GET(_request: NextRequest) {
+export async function GET() {
     console.log("Health check Successful");
     return new Response("OK", {
         headers: { "Content-Type": "text/plain" },

@@ -167,7 +167,7 @@ export default function MintingForm() {
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>
-									Enter Receiver's Wallet Address
+									Enter Receiver&apos;s Wallet Address
 								</FormLabel>
 								<FormControl>
 									<Input

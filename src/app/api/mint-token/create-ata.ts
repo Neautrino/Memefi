@@ -48,7 +48,7 @@ export async function getOrCreateAssociatedTokenAccountTx(
                 )
             );
 
-            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash(commitment);
+            const { blockhash } = await connection.getLatestBlockhash(commitment);
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = payer;
 

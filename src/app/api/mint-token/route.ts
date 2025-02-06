@@ -115,8 +115,9 @@ export async function POST(request: NextRequest) {
 				headers: { "Content-Type": "application/json" },
 			}
 		);
-	} catch (error: any) {
-		return new Response(JSON.stringify({ error: error.message }), {
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+		return new Response(JSON.stringify({ error: errorMessage }), {
 			headers: { "Content-Type": "application/json" },
 		});
 	}

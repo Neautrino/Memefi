@@ -235,9 +235,9 @@ export async function POST(request: NextRequest) {
 				status: 200,
 			}
 		);
-	} catch (error: any) {
-		console.error("Error:", error);
-		return new Response(JSON.stringify({ error: error.message }), {
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+		return new Response(JSON.stringify({ error:errorMessage }), {
 			status: 500,
 			headers: { "Content-Type": "application/json" },
 		});
