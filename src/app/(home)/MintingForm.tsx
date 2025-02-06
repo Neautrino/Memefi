@@ -22,16 +22,13 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
 	token: z.string()
-	.min(32, "Address is required")
-	.required("Address is required"),
+	.min(32, "Address is required"),
 	receiver: z.string()
-	.min(32, "Address is required")
-	.required("Address is required"),
+	.min(32, "Address is required"),
 	supply: z
 		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val))
-		.required();
 });
 
 export default function MintingForm() {
@@ -70,8 +67,10 @@ export default function MintingForm() {
 
 			formData.append("sender", publicKey);
 
-			console.log("formData", formData);
-
+			console.log("FormData entries:");
+        for (const [key, value] of formData.entries()) {
+            console.log(key + ": " + value);
+        }
 			const response = await axios.post("/api/mint-token", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
@@ -108,7 +107,7 @@ export default function MintingForm() {
 
 			setSuccess(
 				`
-                Token transferred successfully!
+                Token Minted successfully!
                 Transaction signature: ${signature}
                 `
 			);

@@ -57,7 +57,12 @@ export async function mintToken(
 			TOKEN_2022_PROGRAM_ID,
 		);
 
-	const tx = Transaction.from(Buffer.from(serializedTx, "base64"));
+		const tx = new Transaction();
+
+		if (serializedTx) {
+			const ataCreationTx = Transaction.from(Buffer.from(serializedTx, "base64"));
+			tx.add(...ataCreationTx.instructions);
+		}
 
 	tx.add(
 		createMintToCheckedInstruction(
