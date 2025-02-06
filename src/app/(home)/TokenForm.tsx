@@ -41,21 +41,18 @@ const formSchema = z.object({
 		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val)),
-
 	totalSupply: z
 		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val)),
-
 	decimals: z
-		.number	()
+		.number()
 		.refine((val) => !isNaN(Number(val)), "Expected a number")
 		.transform((val) => Number(val))
 		.refine(
 			(val) => val >= 0 && val <= 9,
 			"Decimals must be between 0 and 9"
 		),
-
 	description: z.string().min(1, "Description is required"),
 	image: z
 		.any()
@@ -82,6 +79,7 @@ export default function TokenForm() {
 			totalSupply: 1000000,
 			decimals: 6,
 			description: "",
+			image: undefined,
 		},
 	});
 
@@ -146,11 +144,7 @@ export default function TokenForm() {
 			});
 
 			setSuccess(
-				`
-				Token created successfully! 
-				Token Address: ${tokenAddress},
-				Transaction Signature: ${signature}
-				`
+				`Token created successfully! Token Address: ${tokenAddress}, Transaction Signature: ${signature}`
 			);
 
 			form.reset();
@@ -297,17 +291,19 @@ export default function TokenForm() {
 					<FormField
 						control={form.control}
 						name="image"
-						render={({ field: { onChange, value, ...field } }) => (
+						render={({ field }) => (
 							<FormItem>
 								<FormLabel>Token Image</FormLabel>
 								<FormControl>
 									<Input
 										type="file"
 										accept={ACCEPTED_IMAGE_TYPES.join(",")}
-										onChange={(e) =>
-											onChange(e.target.files)
-										}
-										{...field}
+										onChange={(e) => {
+											const files = e.target.files;
+											if (files?.length) {
+												field.onChange(files);
+											}
+										}}
 									/>
 								</FormControl>
 								<FormMessage />

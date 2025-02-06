@@ -2,7 +2,7 @@ import {
 	createMintToCheckedInstruction,
 	getMint,
 	getTokenMetadata,
-    TOKEN_2022_PROGRAM_ID,
+	TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
 	Connection,
@@ -15,16 +15,20 @@ import { getOrCreateAssociatedTokenAccountTx } from "./create-ata";
 
 const connection = new Connection(clusterApiUrl("devnet"));
 
-export async function mintToken(
+async function mintToken(
 	mintPubKey: string,
 	payer: string,
 	owner: string,
 	amount: number
 ) {
-
 	const mintPublickey = new PublicKey(mintPubKey);
 
-	const mintInfo = await getMint(connection, mintPublickey, undefined, TOKEN_2022_PROGRAM_ID);
+	const mintInfo = await getMint(
+		connection,
+		mintPublickey,
+		undefined,
+		TOKEN_2022_PROGRAM_ID
+	);
 	const totalMintAmount = BigInt(amount * 10 ** mintInfo.decimals);
 
 	const metadata = await getTokenMetadata(connection, mintPublickey);
@@ -34,7 +38,6 @@ export async function mintToken(
 	const maxSupply = maxSupplyEntry ? Number(maxSupplyEntry[1]) : null;
 	const currentSupply = BigInt(mintInfo.supply);
 
-	
 	if (
 		maxSupply &&
 		currentSupply + totalMintAmount >
@@ -54,33 +57,35 @@ export async function mintToken(
 			ownerPubkey,
 			false,
 			undefined,
-			TOKEN_2022_PROGRAM_ID,
+			TOKEN_2022_PROGRAM_ID
 		);
 
-		const tx = new Transaction();
+	const tx = new Transaction();
 
-		if (serializedTx) {
-			const ataCreationTx = Transaction.from(Buffer.from(serializedTx, "base64"));
-			tx.add(...ataCreationTx.instructions);
-		}
+	if (serializedTx) {
+		const ataCreationTx = Transaction.from(
+			Buffer.from(serializedTx, "base64")
+		);
+		tx.add(...ataCreationTx.instructions);
+	}
 
 	tx.add(
 		createMintToCheckedInstruction(
-            mintPublickey,
+			mintPublickey,
 			associatedToken,
-            payerPubkey,
+			payerPubkey,
 			totalMintAmount,
 			mintInfo.decimals,
-            [],
-            TOKEN_2022_PROGRAM_ID
+			[],
+			TOKEN_2022_PROGRAM_ID
 		)
 	);
 
-		const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-		tx.recentBlockhash = blockhash;
-		tx.lastValidBlockHeight = lastValidBlockHeight;
-		tx.feePayer = payerPubkey;
-
+	const { blockhash, lastValidBlockHeight } =
+		await connection.getLatestBlockhash();
+	tx.recentBlockhash = blockhash;
+	tx.lastValidBlockHeight = lastValidBlockHeight;
+	tx.feePayer = payerPubkey;
 
 	const serializedTransaction = tx
 		.serialize({ requireAllSignatures: false })
@@ -94,29 +99,33 @@ export async function POST(request: NextRequest) {
 
 	const senderPublicKey = body.get("sender") as string;
 	const receiverPublicKey = body.get("receiver") as string;
-	const amount = parseInt( body.get("amount") as string);
+	const amount = parseInt(body.get("amount") as string);
 	const mintPubkey = body.get("mintPubKey") as string;
 
 	try {
-		const { serializedTransaction, associatedToken, lastValidBlockHeight } = await mintToken(
-			mintPubkey,
-			senderPublicKey,
-			receiverPublicKey,
-			amount
-		);
+		const { serializedTransaction, associatedToken, lastValidBlockHeight } =
+			await mintToken(
+				mintPubkey,
+				senderPublicKey,
+				receiverPublicKey,
+				amount
+			);
 
 		return new Response(
 			JSON.stringify({
 				tokenATA: associatedToken,
 				serializedTransaction,
-				lastValidBlockHeight
+				lastValidBlockHeight,
 			}),
 			{
 				headers: { "Content-Type": "application/json" },
 			}
 		);
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: "An unknown error occurred";
 		return new Response(JSON.stringify({ error: errorMessage }), {
 			headers: { "Content-Type": "application/json" },
 		});
