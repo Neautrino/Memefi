@@ -170,18 +170,9 @@ function IconContainer({
     damping: 12,
   });
 
-  const Wrapper = onClick ? 'button' : Link;
-  const wrapperProps = onClick 
-    ? { onClick: handleClick } 
-    : { 
-        href,
-        target: "_blank",
-        rel: "noopener noreferrer"
-      };
-
   return (
-    <Wrapper {...wrapperProps}>
-      <div className="relative">
+    onClick ? (
+      <button onClick={handleClick} className="relative">
         <motion.div
           ref={ref}
           style={{ width, height }}
@@ -213,7 +204,41 @@ function IconContainer({
             {icon}
           </motion.div>
         </motion.div>
-      </div>
-    </Wrapper>
+      </button>
+    ) : (
+      <Link href={href} target="_blank" rel="noopener noreferrer" className="relative">
+        <motion.div
+          ref={ref}
+          style={{ width, height }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={cn(
+            "aspect-square rounded-full flex items-center justify-center h-full",
+            active 
+              ? "bg-blue-100 dark:bg-blue-900" 
+              : "bg-gray-200 dark:bg-neutral-800"
+          )}
+        >
+          <AnimatePresence>
+            {hovered && (
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="px-2 py-0.5 whitespace-pre rounded-md bg-gray-100 border dark:bg-neutral-800 dark:border-neutral-900 dark:text-white border-gray-200 text-neutral-700 absolute left-full ml-2 top-1/3 -translate-y-1/2 w-fit text-sm"
+              >
+                {title}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <motion.div
+            style={{ width: widthIcon, height: heightIcon }}
+            className="flex items-center justify-center"
+          >
+            {icon}
+          </motion.div>
+        </motion.div>
+      </Link>
+    )
   );
 }
